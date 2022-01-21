@@ -2,6 +2,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using KeyGenerationService.Data;
 using KeyGenerationService.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,11 +10,11 @@ namespace KeyGenerationService.KeyDatabaseSeeders
 {
     public class KeyDatabaseSeeder: IKeyDatabaseSeeder
     {
-        private readonly DbContext _dbContext;
+        private readonly DataContext _dbContext;
         private readonly char[] _allowedCharacters;
         private readonly RandomNumberGenerator _randomNumberGenerator;
 
-        public KeyDatabaseSeeder(DbContext dbContext, char[] allowedCharacters, RandomNumberGenerator randomNumberGenerator)
+        public KeyDatabaseSeeder(DataContext dbContext, char[] allowedCharacters, RandomNumberGenerator randomNumberGenerator)
         {
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
             _allowedCharacters = allowedCharacters ?? throw new ArgumentNullException(nameof(allowedCharacters));
@@ -36,7 +37,7 @@ namespace KeyGenerationService.KeyDatabaseSeeders
                 };
             }
             
-            await _dbContext.AddRangeAsync(keys);
+            await _dbContext.AvailableKeys.AddRangeAsync(keys);
             await _dbContext.SaveChangesAsync();
         }
         

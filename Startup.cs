@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using KeyGenerationService.Data;
 using KeyGenerationService.KeyDatabaseSeeders;
+using KeyGenerationService.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -41,14 +42,15 @@ namespace KeyGenerationService
             services.AddDbContext<DataContext>(o =>
                 o.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
 
-            services.AddScoped<IKeyDatabaseSeeder, KeyDatabaseSeeder>(o =>
+            services.AddSingleton<IKeyDatabaseSeeder, KeyDatabaseSeeder>(o =>
             {
-                var dbContext = o.GetRequiredService<DataContext>();
+                var dbContext = services.BuildServiceProvider().GetRequiredService<DataContext>();
                 var allowedChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890".ToCharArray();
                 var randomNumberGenerator = RandomNumberGenerator.Create();
 
                 return new KeyDatabaseSeeder(dbContext,allowedChars,randomNumberGenerator);
             });
+            services.AddScoped<IKeyService, KeyService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

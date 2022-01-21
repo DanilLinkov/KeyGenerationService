@@ -9,6 +9,9 @@ namespace KeyGenerationService.Data
         {
             
         }
+        
+        public DbSet<AvailableKeys> AvailableKeys { get; set; }
+        public DbSet<TakenKeys> TakenKeys { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
