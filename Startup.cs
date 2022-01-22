@@ -5,11 +5,11 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using KeyGenerationService.BackgroundTasks;
 using KeyGenerationService.Data;
+using KeyGenerationService.KeyCachers;
 using KeyGenerationService.KeyDatabaseSeeders;
 using KeyGenerationService.KeyRetrievers;
 using KeyGenerationService.KeyReturners;
 using KeyGenerationService.Services;
-using KeyGenerationService.Services.KeyCacheService;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -47,14 +47,14 @@ namespace KeyGenerationService
             services.AddDbContext<DataContext>(o =>
                 o.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
             
-            services.AddSingleton<IKeyCacheService, KeyCacheService>(o =>
+            services.AddSingleton<IKeyCacher, KeyCacher>(o =>
             {
                 var redisCacheOptions = new RedisCacheOptions()
                 {
                     Configuration = Configuration.GetConnectionString("RedisConnection"),
                 };
                 
-                return new KeyCacheService(new RedisCache(redisCacheOptions),"test");
+                return new KeyCacher(new RedisCache(redisCacheOptions),"test");
             });
 
             services.AddSingleton<IKeyDatabaseSeeder, KeyDatabaseSeeder>(o =>
@@ -76,7 +76,7 @@ namespace KeyGenerationService
             {
                 var serviceScopeFactory = o.GetService<IServiceScopeFactory>();
                 var databaseSeeder = o.GetRequiredService<IKeyDatabaseSeeder>();
-                var keyCacheService = o.GetRequiredService<IKeyCacheService>();
+                var keyCacheService = o.GetRequiredService<IKeyCacher>();
                 var maxKeysInCache = 3;
 
                 return new RefillKeysInCacheTask(serviceScopeFactory, databaseSeeder, keyCacheService, maxKeysInCache);

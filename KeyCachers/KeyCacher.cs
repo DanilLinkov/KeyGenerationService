@@ -1,18 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
+using KeyGenerationService.BackgroundTasks;
 using KeyGenerationService.Models;
 using Microsoft.Extensions.Caching.Distributed;
 using Newtonsoft.Json;
 
-namespace KeyGenerationService.Services.KeyCacheService
+namespace KeyGenerationService.KeyCachers
 {
-    public class KeyCacheService : IKeyCacheService
+    public class KeyCacher : IKeyCacher
     {
         private readonly IDistributedCache _cache;
+        private readonly RefillKeysInCacheTask _refillKeysInCacheTask;
         private readonly string _cacheKey;
 
-        public KeyCacheService(IDistributedCache cache, string cacheKey)
+        public KeyCacher(IDistributedCache cache, string cacheKey)
         {
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _cacheKey = cacheKey ?? throw new ArgumentNullException(nameof(cacheKey));

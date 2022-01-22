@@ -7,11 +7,11 @@ using AutoMapper;
 using KeyGenerationService.BackgroundTasks;
 using KeyGenerationService.Data;
 using KeyGenerationService.Dtos;
+using KeyGenerationService.KeyCachers;
 using KeyGenerationService.KeyDatabaseSeeders;
 using KeyGenerationService.KeyRetrievers;
 using KeyGenerationService.KeyReturners;
 using KeyGenerationService.Models;
-using KeyGenerationService.Services.KeyCacheService;
 using Microsoft.EntityFrameworkCore;
 
 namespace KeyGenerationService.Services
@@ -21,25 +21,24 @@ namespace KeyGenerationService.Services
         private readonly IMapper _mapper;
         private readonly DataContext _context;
         private readonly IKeyDatabaseSeeder _databaseSeeder;
-        private readonly IKeyCacheService _keyCacheService;
+        private readonly IKeyCacher _keyCacher;
         private readonly RefillKeysInCacheTask _refillKeysInCacheTask;
         private readonly IKeyRetriever _keyRetriever;
         private readonly IKeyReturner _keyReturner;
 
-        public KeyService(IMapper mapper,DataContext context, IKeyDatabaseSeeder databaseSeeder, IKeyCacheService keyCacheService, RefillKeysInCacheTask refillKeysInCacheTask, IKeyRetriever keyRetriever, IKeyReturner keyReturner)
+        public KeyService(IMapper mapper,DataContext context, IKeyDatabaseSeeder databaseSeeder, IKeyCacher keyCacher, IKeyRetriever keyRetriever, IKeyReturner keyReturner)
         {
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _databaseSeeder = databaseSeeder ?? throw new ArgumentNullException(nameof(databaseSeeder));
-            _keyCacheService = keyCacheService ?? throw new ArgumentNullException(nameof(keyCacheService));
-            _refillKeysInCacheTask = refillKeysInCacheTask ?? throw new ArgumentNullException(nameof(refillKeysInCacheTask));
+            _keyCacher = keyCacher ?? throw new ArgumentNullException(nameof(keyCacher));
             _keyRetriever = keyRetriever ?? throw new ArgumentNullException(nameof(keyRetriever));
             _keyReturner = keyReturner ?? throw new ArgumentNullException(nameof(keyReturner));
         }
         
         public async Task<GetKeyDto> GetAKeyAsync()
         {
-            var keysFromCache = await _keyCacheService.GetKeys(1);
+            var keysFromCache = await _keyCacher.GetKeys(1);
             
             if (keysFromCache.Count > 0)
             {
@@ -72,7 +71,7 @@ namespace KeyGenerationService.Services
                 count = 5;
             }
             
-            var keysFromCache = await _keyCacheService.GetKeys(count);
+            var keysFromCache = await _keyCacher.GetKeys(count);
 
             var keysLeftToGet = count - keysFromCache.Count;
             

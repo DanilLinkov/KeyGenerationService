@@ -3,11 +3,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using KeyGenerationService.Data;
+using KeyGenerationService.KeyCachers;
 using KeyGenerationService.KeyDatabaseSeeders;
 using KeyGenerationService.KeyRetrievers;
 using KeyGenerationService.Models;
 using KeyGenerationService.Services;
-using KeyGenerationService.Services.KeyCacheService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -18,14 +18,14 @@ namespace KeyGenerationService.BackgroundTasks
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly IKeyDatabaseSeeder _databaseSeeder;
-        private readonly IKeyCacheService _keyCacheService;
+        private readonly IKeyCacher _keyCacher;
         private readonly int _maxKeysInCache;
 
-        public RefillKeysInCacheTask(IServiceScopeFactory serviceScopeFactory, IKeyDatabaseSeeder databaseSeeder, IKeyCacheService keyCacheService, int maxKeysInCache)
+        public RefillKeysInCacheTask(IServiceScopeFactory serviceScopeFactory, IKeyDatabaseSeeder databaseSeeder, IKeyCacher keyCacher, int maxKeysInCache)
         {
             _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
             _databaseSeeder = databaseSeeder ?? throw new ArgumentNullException(nameof(databaseSeeder));
-            _keyCacheService = keyCacheService ?? throw new ArgumentNullException(nameof(keyCacheService));
+            _keyCacher = keyCacher ?? throw new ArgumentNullException(nameof(keyCacher));
             _maxKeysInCache = maxKeysInCache;
         }
 
@@ -35,7 +35,7 @@ namespace KeyGenerationService.BackgroundTasks
 
             var keyRetriever = scope.ServiceProvider.GetRequiredService<IKeyRetriever>();
             
-            var keysInCache = await _keyCacheService.GetKeys(_maxKeysInCache);
+            var keysInCache = await _keyCacher.GetKeys(_maxKeysInCache);
 
             if (keysInCache.Count == _maxKeysInCache)
             {
@@ -50,7 +50,7 @@ namespace KeyGenerationService.BackgroundTasks
                 keysToAdd.AddRange(await keyRetriever.RetrieveKeys(_maxKeysInCache - keysInCache.Count));
             }
 
-            await _keyCacheService.AddKeys(keysToAdd);
+            await _keyCacher.AddKeys(keysToAdd);
         }
     }
 }

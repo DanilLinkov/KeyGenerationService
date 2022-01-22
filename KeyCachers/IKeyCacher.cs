@@ -2,9 +2,9 @@
 using System.Threading.Tasks;
 using KeyGenerationService.Models;
 
-namespace KeyGenerationService.Services.KeyCacheService
+namespace KeyGenerationService.KeyCachers
 {
-    public interface IKeyCacheService
+    public interface IKeyCacher
     {
         Task<List<TakenKeys>> GetKeys(int count);
         Task AddKeys(List<TakenKeys> keys);
