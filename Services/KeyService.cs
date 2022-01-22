@@ -8,6 +8,8 @@ using KeyGenerationService.BackgroundTasks;
 using KeyGenerationService.Data;
 using KeyGenerationService.Dtos;
 using KeyGenerationService.KeyDatabaseSeeders;
+using KeyGenerationService.KeyRetrievers;
+using KeyGenerationService.KeyReturners;
 using KeyGenerationService.Models;
 using KeyGenerationService.Services.KeyCacheService;
 using Microsoft.EntityFrameworkCore;
@@ -21,14 +23,18 @@ namespace KeyGenerationService.Services
         private readonly IKeyDatabaseSeeder _databaseSeeder;
         private readonly IKeyCacheService _keyCacheService;
         private readonly RefillKeysInCacheTask _refillKeysInCacheTask;
+        private readonly IKeyRetriever _keyRetriever;
+        private readonly IKeyReturner _keyReturner;
 
-        public KeyService(IMapper mapper,DataContext context, IKeyDatabaseSeeder databaseSeeder, IKeyCacheService keyCacheService, RefillKeysInCacheTask refillKeysInCacheTask)
+        public KeyService(IMapper mapper,DataContext context, IKeyDatabaseSeeder databaseSeeder, IKeyCacheService keyCacheService, RefillKeysInCacheTask refillKeysInCacheTask, IKeyRetriever keyRetriever, IKeyReturner keyReturner)
         {
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _databaseSeeder = databaseSeeder ?? throw new ArgumentNullException(nameof(databaseSeeder));
             _keyCacheService = keyCacheService ?? throw new ArgumentNullException(nameof(keyCacheService));
             _refillKeysInCacheTask = refillKeysInCacheTask ?? throw new ArgumentNullException(nameof(refillKeysInCacheTask));
+            _keyRetriever = keyRetriever ?? throw new ArgumentNullException(nameof(keyRetriever));
+            _keyReturner = keyReturner ?? throw new ArgumentNullException(nameof(keyReturner));
         }
         
         public async Task<GetKeyDto> GetAKeyAsync()
@@ -42,28 +48,17 @@ namespace KeyGenerationService.Services
                 return getCacheKeyDto;
             }
 
-            var key = await _context.AvailableKeys.FirstOrDefaultAsync();
+            var keysFromDatabase = await _keyRetriever.RetrieveKeys(1);
 
-            if (key == null)
+            if (keysFromDatabase.Count <= 0)
             {
                 await _databaseSeeder.GenerateAndSeedAsync(5, 8);
-                key = await _context.AvailableKeys.FirstOrDefaultAsync();
+                keysFromDatabase = await _keyRetriever.RetrieveKeys(1);
             }
-
-            var takenKey = new TakenKeys()
-            {
-                Key = key.Key,
-                CreationDate = key.CreationDate,
-                Size = key.Size,
-                TakenDate = DateTime.Now
-            };
-
-            _context.AvailableKeys.Remove(key);
-            _context.TakenKeys.Add(takenKey);
             
-            await _context.SaveChangesAsync();
+            var key = keysFromDatabase.First();
             
-            var getKeyDto = _mapper.Map<GetKeyDto>(takenKey);
+            var getKeyDto = _mapper.Map<GetKeyDto>(key);
             
             _refillKeysInCacheTask.StartAsync(CancellationToken.None);
             
@@ -80,31 +75,18 @@ namespace KeyGenerationService.Services
             var keysFromCache = await _keyCacheService.GetKeys(count);
 
             var keysLeftToGet = count - keysFromCache.Count;
-
-            var keys = await _context.AvailableKeys.Take(keysLeftToGet).ToListAsync();
+            
+            var keys = await _keyRetriever.RetrieveKeys(keysLeftToGet);
             
             if (keys.Count != keysLeftToGet)
             {
                 await _databaseSeeder.GenerateAndSeedAsync(6, 8);
-                keys = await _context.AvailableKeys.Take(count).ToListAsync();
+                keys.AddRange(await _keyRetriever.RetrieveKeys(keysLeftToGet - keys.Count));
             }
             
-            var takenKeys = keys.Select(key => new TakenKeys()
-            {
-                Key = key.Key,
-                CreationDate = key.CreationDate,
-                Size = key.Size,
-                TakenDate = DateTime.Now
-            }).ToList();
-            
-            _context.AvailableKeys.RemoveRange(keys);
-            _context.TakenKeys.AddRange(takenKeys);
-            
-            await _context.SaveChangesAsync();
-            
-            takenKeys.AddRange(keysFromCache);
+            keys.AddRange(keysFromCache);
 
-            var getKeyDtos = takenKeys.Select(key => _mapper.Map<GetKeyDto>(key)).ToList();
+            var getKeyDtos = keys.Select(key => _mapper.Map<GetKeyDto>(key)).ToList();
 
             _refillKeysInCacheTask.StartAsync(CancellationToken.None);
             
@@ -113,19 +95,7 @@ namespace KeyGenerationService.Services
 
         public async Task ReturnKeysAsync(ReturnKeyDto returnKeyDto)
         {
-            var keysToReturn = await _context.TakenKeys.Where(key => returnKeyDto.Keys.Contains(key.Key)).ToListAsync();
-            
-            var availableKeys = keysToReturn.Select(key => new AvailableKeys()
-            {
-                Key = key.Key,
-                CreationDate = key.CreationDate,
-                Size = key.Size
-            });
-            
-            _context.TakenKeys.RemoveRange(keysToReturn);
-            _context.AvailableKeys.AddRange(availableKeys);
-
-            await _context.SaveChangesAsync();
+            await _keyReturner.ReturnKeys(returnKeyDto.Keys);
         }
     }
 }

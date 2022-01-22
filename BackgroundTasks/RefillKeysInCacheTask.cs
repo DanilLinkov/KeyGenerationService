@@ -4,23 +4,26 @@ using System.Threading;
 using System.Threading.Tasks;
 using KeyGenerationService.Data;
 using KeyGenerationService.KeyDatabaseSeeders;
+using KeyGenerationService.KeyRetrievers;
 using KeyGenerationService.Models;
+using KeyGenerationService.Services;
 using KeyGenerationService.Services.KeyCacheService;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 namespace KeyGenerationService.BackgroundTasks
 {
     public class RefillKeysInCacheTask : BackgroundService
     {
-        private readonly DataContext _dbContext;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly IKeyDatabaseSeeder _databaseSeeder;
         private readonly IKeyCacheService _keyCacheService;
         private readonly int _maxKeysInCache;
 
-        public RefillKeysInCacheTask(DataContext dbContext, IKeyDatabaseSeeder databaseSeeder, IKeyCacheService keyCacheService, int maxKeysInCache)
+        public RefillKeysInCacheTask(IServiceScopeFactory serviceScopeFactory, IKeyDatabaseSeeder databaseSeeder, IKeyCacheService keyCacheService, int maxKeysInCache)
         {
-            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+            _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
             _databaseSeeder = databaseSeeder ?? throw new ArgumentNullException(nameof(databaseSeeder));
             _keyCacheService = keyCacheService ?? throw new ArgumentNullException(nameof(keyCacheService));
             _maxKeysInCache = maxKeysInCache;
@@ -28,6 +31,10 @@ namespace KeyGenerationService.BackgroundTasks
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            using var scope = _serviceScopeFactory.CreateScope();
+
+            var keyRetriever = scope.ServiceProvider.GetRequiredService<IKeyRetriever>();
+            
             var keysInCache = await _keyCacheService.GetKeys(_maxKeysInCache);
 
             if (keysInCache.Count == _maxKeysInCache)
@@ -35,28 +42,15 @@ namespace KeyGenerationService.BackgroundTasks
                 return;
             }
 
-            var keysToAdd = await _dbContext.AvailableKeys.Take(_maxKeysInCache - keysInCache.Count).ToListAsync(cancellationToken: stoppingToken);
+            var keysToAdd = await keyRetriever.RetrieveKeys(_maxKeysInCache - keysInCache.Count);
 
             if (keysToAdd.Count < _maxKeysInCache)
             {
                 await _databaseSeeder.GenerateAndSeedAsync(10, 8);
-                keysToAdd = await _dbContext.AvailableKeys.Take(_maxKeysInCache - keysInCache.Count).ToListAsync(cancellationToken: stoppingToken);
+                keysToAdd.AddRange(await keyRetriever.RetrieveKeys(_maxKeysInCache - keysInCache.Count));
             }
-            
-            var takenKeys = keysToAdd.Select(key => new TakenKeys()
-            {
-                Key = key.Key,
-                CreationDate = key.CreationDate,
-                Size = key.Size,
-                TakenDate = DateTime.Now
-            }).ToList();
-            
-            _dbContext.AvailableKeys.RemoveRange(keysToAdd);
-            _dbContext.TakenKeys.AddRange(takenKeys);
-            
-            await _dbContext.SaveChangesAsync(stoppingToken);
 
-            await _keyCacheService.AddKeys(takenKeys);
+            await _keyCacheService.AddKeys(keysToAdd);
         }
     }
 }

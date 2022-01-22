@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using KeyGenerationService.BackgroundTasks;
 using KeyGenerationService.Data;
 using KeyGenerationService.KeyDatabaseSeeders;
+using KeyGenerationService.KeyRetrievers;
+using KeyGenerationService.KeyReturners;
 using KeyGenerationService.Services;
 using KeyGenerationService.Services.KeyCacheService;
 using Microsoft.AspNetCore.Builder;
@@ -57,22 +59,27 @@ namespace KeyGenerationService
 
             services.AddSingleton<IKeyDatabaseSeeder, KeyDatabaseSeeder>(o =>
             {
-                var dbContext = services.BuildServiceProvider().GetRequiredService<DataContext>();
+                var serviceScopeFactory = o.GetService<IServiceScopeFactory>();
                 var allowedChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890".ToCharArray();
                 var randomNumberGenerator = RandomNumberGenerator.Create();
 
-                return new KeyDatabaseSeeder(dbContext,allowedChars,randomNumberGenerator);
+                return new KeyDatabaseSeeder(serviceScopeFactory, allowedChars, randomNumberGenerator);
             });
+
+            services.AddScoped<IKeyRetriever, KeyRetriever>();
+            
+            services.AddScoped<IKeyReturner, KeyReturner>();
+            
             services.AddScoped<IKeyService, KeyService>();
 
             services.AddSingleton<RefillKeysInCacheTask>(o =>
             {
-                var dbContext = services.BuildServiceProvider().GetRequiredService<DataContext>();
+                var serviceScopeFactory = o.GetService<IServiceScopeFactory>();
                 var databaseSeeder = o.GetRequiredService<IKeyDatabaseSeeder>();
                 var keyCacheService = o.GetRequiredService<IKeyCacheService>();
                 var maxKeysInCache = 3;
 
-                return new RefillKeysInCacheTask(dbContext, databaseSeeder, keyCacheService, maxKeysInCache);
+                return new RefillKeysInCacheTask(serviceScopeFactory, databaseSeeder, keyCacheService, maxKeysInCache);
             });
             
             services.AddHostedService<RefillKeysInCacheTask>(o => o.GetRequiredService<RefillKeysInCacheTask>());

@@ -5,24 +5,29 @@ using System.Threading.Tasks;
 using KeyGenerationService.Data;
 using KeyGenerationService.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace KeyGenerationService.KeyDatabaseSeeders
 {
     public class KeyDatabaseSeeder: IKeyDatabaseSeeder
     {
-        private readonly DataContext _dbContext;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly char[] _allowedCharacters;
         private readonly RandomNumberGenerator _randomNumberGenerator;
 
-        public KeyDatabaseSeeder(DataContext dbContext, char[] allowedCharacters, RandomNumberGenerator randomNumberGenerator)
+        public KeyDatabaseSeeder(IServiceScopeFactory serviceScopeFactory, char[] allowedCharacters, RandomNumberGenerator randomNumberGenerator)
         {
-            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+            _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
             _allowedCharacters = allowedCharacters ?? throw new ArgumentNullException(nameof(allowedCharacters));
             _randomNumberGenerator = randomNumberGenerator ?? throw new ArgumentNullException(nameof(randomNumberGenerator));
         }
         
         public async Task GenerateAndSeedAsync(int numberOfKeys, int sizeOfKey)
         {
+            using var scope = _serviceScopeFactory.CreateScope();
+
+            var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
+            
             var keys = new AvailableKeys[numberOfKeys];
             
             for (var i = 0; i < numberOfKeys; i++)
@@ -37,8 +42,8 @@ namespace KeyGenerationService.KeyDatabaseSeeders
                 };
             }
             
-            await _dbContext.AvailableKeys.AddRangeAsync(keys);
-            await _dbContext.SaveChangesAsync();
+            await dbContext.AvailableKeys.AddRangeAsync(keys);
+            await dbContext.SaveChangesAsync();
         }
         
         public string GetUniqueKey(int size)
