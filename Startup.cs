@@ -3,14 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+using KeyGenerationService.BackgroundTasks;
 using KeyGenerationService.Data;
 using KeyGenerationService.KeyDatabaseSeeders;
 using KeyGenerationService.Services;
+using KeyGenerationService.Services.KeyCacheService;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Redis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -41,6 +44,16 @@ namespace KeyGenerationService
 
             services.AddDbContext<DataContext>(o =>
                 o.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+            
+            services.AddSingleton<IKeyCacheService, KeyCacheService>(o =>
+            {
+                var redisCacheOptions = new RedisCacheOptions()
+                {
+                    Configuration = Configuration.GetConnectionString("RedisConnection"),
+                };
+                
+                return new KeyCacheService(new RedisCache(redisCacheOptions),"test");
+            });
 
             services.AddSingleton<IKeyDatabaseSeeder, KeyDatabaseSeeder>(o =>
             {
@@ -51,6 +64,18 @@ namespace KeyGenerationService
                 return new KeyDatabaseSeeder(dbContext,allowedChars,randomNumberGenerator);
             });
             services.AddScoped<IKeyService, KeyService>();
+
+            services.AddSingleton<RefillKeysInCacheTask>(o =>
+            {
+                var dbContext = services.BuildServiceProvider().GetRequiredService<DataContext>();
+                var databaseSeeder = o.GetRequiredService<IKeyDatabaseSeeder>();
+                var keyCacheService = o.GetRequiredService<IKeyCacheService>();
+                var maxKeysInCache = 3;
+
+                return new RefillKeysInCacheTask(dbContext, databaseSeeder, keyCacheService, maxKeysInCache);
+            });
+            
+            services.AddHostedService<RefillKeysInCacheTask>(o => o.GetRequiredService<RefillKeysInCacheTask>());
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
+using KeyGenerationService.BackgroundTasks;
 using KeyGenerationService.Data;
 using KeyGenerationService.Dtos;
 using KeyGenerationService.KeyDatabaseSeeders;
 using KeyGenerationService.Models;
+using KeyGenerationService.Services.KeyCacheService;
 using Microsoft.EntityFrameworkCore;
 
 namespace KeyGenerationService.Services
@@ -16,16 +19,29 @@ namespace KeyGenerationService.Services
         private readonly IMapper _mapper;
         private readonly DataContext _context;
         private readonly IKeyDatabaseSeeder _databaseSeeder;
+        private readonly IKeyCacheService _keyCacheService;
+        private readonly RefillKeysInCacheTask _refillKeysInCacheTask;
 
-        public KeyService(IMapper mapper,DataContext context, IKeyDatabaseSeeder databaseSeeder)
+        public KeyService(IMapper mapper,DataContext context, IKeyDatabaseSeeder databaseSeeder, IKeyCacheService keyCacheService, RefillKeysInCacheTask refillKeysInCacheTask)
         {
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _databaseSeeder = databaseSeeder ?? throw new ArgumentNullException(nameof(databaseSeeder));
+            _keyCacheService = keyCacheService ?? throw new ArgumentNullException(nameof(keyCacheService));
+            _refillKeysInCacheTask = refillKeysInCacheTask ?? throw new ArgumentNullException(nameof(refillKeysInCacheTask));
         }
         
         public async Task<GetKeyDto> GetAKeyAsync()
         {
+            var keysFromCache = await _keyCacheService.GetKeys(1);
+            
+            if (keysFromCache.Count > 0)
+            {
+                var getCacheKeyDto = _mapper.Map<GetKeyDto>(keysFromCache.First());
+            
+                return getCacheKeyDto;
+            }
+
             var key = await _context.AvailableKeys.FirstOrDefaultAsync();
 
             if (key == null)
@@ -48,6 +64,9 @@ namespace KeyGenerationService.Services
             await _context.SaveChangesAsync();
             
             var getKeyDto = _mapper.Map<GetKeyDto>(takenKey);
+            
+            _refillKeysInCacheTask.StartAsync(CancellationToken.None);
+            
             return getKeyDto;
         }
 
@@ -57,10 +76,14 @@ namespace KeyGenerationService.Services
             {
                 count = 5;
             }
-
-            var keys = await _context.AvailableKeys.Take(count).ToListAsync();
             
-            if (keys.Count != count)
+            var keysFromCache = await _keyCacheService.GetKeys(count);
+
+            var keysLeftToGet = count - keysFromCache.Count;
+
+            var keys = await _context.AvailableKeys.Take(keysLeftToGet).ToListAsync();
+            
+            if (keys.Count != keysLeftToGet)
             {
                 await _databaseSeeder.GenerateAndSeedAsync(6, 8);
                 keys = await _context.AvailableKeys.Take(count).ToListAsync();
@@ -72,14 +95,19 @@ namespace KeyGenerationService.Services
                 CreationDate = key.CreationDate,
                 Size = key.Size,
                 TakenDate = DateTime.Now
-            });
+            }).ToList();
             
             _context.AvailableKeys.RemoveRange(keys);
             _context.TakenKeys.AddRange(takenKeys);
             
             await _context.SaveChangesAsync();
+            
+            takenKeys.AddRange(keysFromCache);
 
-            var getKeyDtos = keys.Select(key => _mapper.Map<GetKeyDto>(key)).ToList();
+            var getKeyDtos = takenKeys.Select(key => _mapper.Map<GetKeyDto>(key)).ToList();
+
+            _refillKeysInCacheTask.StartAsync(CancellationToken.None);
+            
             return getKeyDtos;
         }
 
