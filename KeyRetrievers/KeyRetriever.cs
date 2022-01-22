@@ -18,11 +18,11 @@ namespace KeyGenerationService.KeyRetrievers
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
         
-        public async Task<List<TakenKeys>> RetrieveKeys(int numberOfKeys)
+        public async Task<List<TakenKey>> RetrieveKeys(int numberOfKeys)
         {
             var keys = await _context.AvailableKeys.Take(numberOfKeys).ToListAsync();
             
-            var takenKeys = keys.Select(key => new TakenKeys()
+            var takenKeys = keys.Select(key => new TakenKey()
             {
                 Key = key.Key,
                 CreationDate = key.CreationDate,

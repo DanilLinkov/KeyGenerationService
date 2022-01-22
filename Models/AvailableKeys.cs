@@ -2,7 +2,7 @@
 
 namespace KeyGenerationService.Models
 {
-    public class AvailableKeys
+    public class AvailableKey
     {
         public int Id { get; set; }
         public string Key { get; set; }

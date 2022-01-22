@@ -28,13 +28,13 @@ namespace KeyGenerationService.KeyDatabaseSeeders
 
             var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
             
-            var keys = new AvailableKeys[numberOfKeys];
+            var keys = new AvailableKey[numberOfKeys];
             
             for (var i = 0; i < numberOfKeys; i++)
             {
                 var key = GetUniqueKey(sizeOfKey);
                 
-                keys[i] = new AvailableKeys
+                keys[i] = new AvailableKey
                 {
                     Key = key,
                     Size = sizeOfKey,

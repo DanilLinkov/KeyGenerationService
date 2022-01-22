@@ -21,7 +21,7 @@ namespace KeyGenerationService.KeyReturners
         {
             var takenKeysToReturn = await _context.TakenKeys.Where(key => keysToReturn.Contains(key.Key)).ToListAsync();
             
-            var availableKeys = takenKeysToReturn.Select(key => new AvailableKeys()
+            var availableKeys = takenKeysToReturn.Select(key => new AvailableKey()
             {
                 Key = key.Key,
                 CreationDate = key.CreationDate,

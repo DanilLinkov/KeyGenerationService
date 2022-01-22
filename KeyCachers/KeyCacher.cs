@@ -21,16 +21,16 @@ namespace KeyGenerationService.KeyCachers
             _cacheKey = cacheKey ?? throw new ArgumentNullException(nameof(cacheKey));
         }
         
-        public async Task<List<TakenKeys>> GetKeys(int count)
+        public async Task<List<TakenKey>> GetKeys(int count)
         {
             var value = await _cache.GetStringAsync(_cacheKey);
 
             if (value == null)
             {
-                return new List<TakenKeys>();
+                return new List<TakenKey>();
             }
 
-            var keys = JsonConvert.DeserializeObject<List<TakenKeys>>(value);
+            var keys = JsonConvert.DeserializeObject<List<TakenKey>>(value);
 
             if (keys.Count < count)
             {
@@ -46,7 +46,7 @@ namespace KeyGenerationService.KeyCachers
             return keysToReturn;
         }
 
-        public async Task AddKeys(List<TakenKeys> keys)
+        public async Task AddKeys(List<TakenKey> keys)
         {
             var value = await _cache.GetStringAsync(_cacheKey);
 
@@ -56,14 +56,14 @@ namespace KeyGenerationService.KeyCachers
             }
             else
             {
-                var existingKeys = JsonConvert.DeserializeObject<List<TakenKeys>>(value);
+                var existingKeys = JsonConvert.DeserializeObject<List<TakenKey>>(value);
                 existingKeys.AddRange(keys);
             
                 await SetKeys(existingKeys);
             }
         }
 
-        public async Task SetKeys(List<TakenKeys> keys)
+        public async Task SetKeys(List<TakenKey> keys)
         {
             var options = new DistributedCacheEntryOptions
             {

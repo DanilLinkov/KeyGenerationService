@@ -8,8 +8,8 @@ namespace KeyGenerationService
     {
         public AutoMapperProfile()
         {
-            CreateMap<AvailableKeys, GetKeyDto>();
-            CreateMap<TakenKeys, GetKeyDto>();
+            CreateMap<AvailableKey, GetKeyDto>();
+            CreateMap<TakenKey, GetKeyDto>();
         }
     }
 }

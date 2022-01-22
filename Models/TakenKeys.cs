@@ -2,7 +2,7 @@
 
 namespace KeyGenerationService.Models
 {
-    public class TakenKeys
+    public class TakenKey
     {
         public int Id { get; set; }
         public string Key { get; set; }

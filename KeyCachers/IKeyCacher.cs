@@ -6,8 +6,8 @@ namespace KeyGenerationService.KeyCachers
 {
     public interface IKeyCacher
     {
-        Task<List<TakenKeys>> GetKeys(int count);
-        Task AddKeys(List<TakenKeys> keys);
-        Task SetKeys(List<TakenKeys> keys);
+        Task<List<TakenKey>> GetKeys(int count);
+        Task AddKeys(List<TakenKey> keys);
+        Task SetKeys(List<TakenKey> keys);
     }
 }
