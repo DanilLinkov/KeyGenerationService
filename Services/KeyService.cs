@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
+using KeyGenerationService.Auth.RateLimiters;
 using KeyGenerationService.BackgroundTasks;
 using KeyGenerationService.Data;
 using KeyGenerationService.Dtos;
@@ -12,12 +14,14 @@ using KeyGenerationService.KeyDatabaseSeeders;
 using KeyGenerationService.KeyRetrievers;
 using KeyGenerationService.KeyReturners;
 using KeyGenerationService.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace KeyGenerationService.Services
 {
     public class KeyService : IKeyService
     {
+        private readonly IRateLimiter _rateLimiter;
         private readonly IMapper _mapper;
         private readonly DataContext _context;
         private readonly IKeyDatabaseSeeder _databaseSeeder;
@@ -26,8 +30,9 @@ namespace KeyGenerationService.Services
         private readonly IKeyRetriever _keyRetriever;
         private readonly IKeyReturner _keyReturner;
 
-        public KeyService(IMapper mapper,DataContext context, IKeyDatabaseSeeder databaseSeeder, RefillKeysInCacheTask refillKeysInCacheTask, IKeyCacher keyCacher, IKeyRetriever keyRetriever, IKeyReturner keyReturner)
+        public KeyService(IRateLimiter rateLimiter, IMapper mapper,DataContext context, IKeyDatabaseSeeder databaseSeeder, RefillKeysInCacheTask refillKeysInCacheTask, IKeyCacher keyCacher, IKeyRetriever keyRetriever, IKeyReturner keyReturner)
         {
+            _rateLimiter = rateLimiter ?? throw new ArgumentNullException(nameof(rateLimiter));
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _databaseSeeder = databaseSeeder ?? throw new ArgumentNullException(nameof(databaseSeeder));
@@ -39,6 +44,13 @@ namespace KeyGenerationService.Services
         
         public async Task<GetKeyDto> GetAKeyAsync()
         {
+            var count = await _rateLimiter.IsAllowedAsync(1);
+            
+            if (count == 0)
+            {
+                return null;
+            }
+
             var keysFromCache = await _keyCacher.GetKeys(1);
             
             if (keysFromCache.Count > 0)
@@ -67,11 +79,11 @@ namespace KeyGenerationService.Services
 
         public async Task<List<GetKeyDto>> GetKeysAsync(int count)
         {
-            if (count > 5)
-            {
-                count = 5;
-            }
-            
+            count = await _rateLimiter.IsAllowedAsync(count);
+
+            if (count == 0) return null;
+            if (count > 5) count = 5;
+
             var keysFromCache = await _keyCacher.GetKeys(count);
 
             if (keysFromCache.Count < count)

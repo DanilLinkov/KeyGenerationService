@@ -2,10 +2,12 @@
 using System.Threading.Tasks;
 using KeyGenerationService.Dtos;
 using KeyGenerationService.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KeyGenerationService.Controllers
 {
+    [Authorize]
     [Controller]
     [Route("api/")]
     public class KeyController : ControllerBase
@@ -16,12 +18,17 @@ namespace KeyGenerationService.Controllers
         {
             _keyService = keyService ?? throw new ArgumentNullException(nameof(keyService));
         }
-        
+
         [HttpGet("key")]
         public async Task<IActionResult> Get()
         {
             var key = await _keyService.GetAKeyAsync();
-            
+
+            if (key == null)
+            {
+                return Ok("Rate limit reached for today");
+            }
+
             return Ok(key);
         }
         
@@ -29,6 +36,11 @@ namespace KeyGenerationService.Controllers
         public async Task<IActionResult> Get(int count)
         {
             var keys = await _keyService.GetKeysAsync(count);
+            
+            if (keys == null)
+            {
+                return Ok("Rate limit reached for today");
+            }
             
             return Ok(keys);
         }

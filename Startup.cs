@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+using AspNetCore.Authentication.ApiKey;
+using KeyGenerationService.Auth;
+using KeyGenerationService.Auth.RateLimiters;
 using KeyGenerationService.BackgroundTasks;
 using KeyGenerationService.Data;
 using KeyGenerationService.KeyCachers;
@@ -10,6 +13,7 @@ using KeyGenerationService.KeyDatabaseSeeders;
 using KeyGenerationService.KeyRetrievers;
 using KeyGenerationService.KeyReturners;
 using KeyGenerationService.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -44,8 +48,19 @@ namespace KeyGenerationService
             
             services.AddAutoMapper(typeof(Startup));
 
+            services.AddHttpContextAccessor();
+
             services.AddDbContext<DataContext>(o =>
                 o.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+
+            services.AddSingleton<IKeyDatabaseSeeder, KeyDatabaseSeeder>(o =>
+            {
+                var serviceScopeFactory = o.GetService<IServiceScopeFactory>();
+                var allowedChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890".ToCharArray();
+                var randomNumberGenerator = RandomNumberGenerator.Create();
+
+                return new KeyDatabaseSeeder(serviceScopeFactory, allowedChars, randomNumberGenerator);
+            });
             
             services.AddSingleton<IKeyCacher, KeyCacher>(o =>
             {
@@ -57,19 +72,8 @@ namespace KeyGenerationService
                 return new KeyCacher(new RedisCache(redisCacheOptions),"test");
             });
 
-            services.AddSingleton<IKeyDatabaseSeeder, KeyDatabaseSeeder>(o =>
-            {
-                var serviceScopeFactory = o.GetService<IServiceScopeFactory>();
-                var allowedChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890".ToCharArray();
-                var randomNumberGenerator = RandomNumberGenerator.Create();
-
-                return new KeyDatabaseSeeder(serviceScopeFactory, allowedChars, randomNumberGenerator);
-            });
-
             services.AddScoped<IKeyRetriever, KeyRetriever>();
-            
             services.AddScoped<IKeyReturner, KeyReturner>();
-            
             services.AddScoped<IKeyService, KeyService>();
 
             services.AddSingleton<RefillKeysInCacheTask>(o =>
@@ -81,8 +85,21 @@ namespace KeyGenerationService
 
                 return new RefillKeysInCacheTask(serviceScopeFactory, databaseSeeder, keyCacheService, maxKeysInCache);
             });
-            
             services.AddHostedService<RefillKeysInCacheTask>(o => o.GetRequiredService<RefillKeysInCacheTask>());
+
+            services.AddScoped<IRateLimiter, RateLimiter>();
+            
+            services.AddAuthentication(ApiKeyDefaults.AuthenticationScheme)
+                .AddApiKeyInHeader<ApiKeyProvider>(o =>
+                {
+                    o.Realm = "KeyGenerationService";
+                    o.KeyName = "API-KEY";
+                });
+            
+            services.AddAuthorization(options =>
+            {
+            	options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -99,6 +116,7 @@ namespace KeyGenerationService
 
             app.UseRouting();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints => { endpoints.MapControllers(); });

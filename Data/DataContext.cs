@@ -1,4 +1,5 @@
-﻿using KeyGenerationService.Models;
+﻿using KeyGenerationService.Auth;
+using KeyGenerationService.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace KeyGenerationService.Data
@@ -12,6 +13,7 @@ namespace KeyGenerationService.Data
         
         public DbSet<AvailableKeys> AvailableKeys { get; set; }
         public DbSet<TakenKeys> TakenKeys { get; set; }
+        public DbSet<ApiKey> ApiKeys { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -24,10 +26,17 @@ namespace KeyGenerationService.Data
             modelBuilder.Entity<TakenKeys>().HasKey(t => t.Id);
             modelBuilder.Entity<TakenKeys>().HasAlternateKey(t => t.Key);
             
+            modelBuilder.Entity<ApiKey>().HasKey(t => t.Id);
+            modelBuilder.Entity<ApiKey>().HasAlternateKey(t => t.Key);
+            
             // Columns
             modelBuilder.Entity<AvailableKeys>().Property(t => t.Size).IsRequired();
             
             modelBuilder.Entity<TakenKeys>().Property(t => t.Size).IsRequired();
+
+            modelBuilder.Entity<ApiKey>().Property(t => t.OwnerName).IsRequired();
+            
+            modelBuilder.Entity<ApiKey>().Ignore(t => t.Claims);
 
             // Relationships
 
