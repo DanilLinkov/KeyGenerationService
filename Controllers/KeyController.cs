@@ -27,6 +27,11 @@ namespace KeyGenerationService.Controllers
             {
                 parameter.size = 8;
             }
+            
+            if (parameter.size > 16)
+            {
+                parameter.size = 16;
+            }
 
             var key = await _keyService.GetAKeyAsync(parameter.size);
 
@@ -41,11 +46,16 @@ namespace KeyGenerationService.Controllers
         [HttpGet("keys/{count}")]
         public async Task<IActionResult> Get(int count, [FromQuery] GetKeyQueryParameter parameter)
         {
-            if (parameter.size <= 3 )
+            if (parameter.size <= 3)
             {
                 parameter.size = 8;
             }
-            
+
+            if (parameter.size > 16)
+            {
+                parameter.size = 16;
+            }
+
             var keys = await _keyService.GetKeysAsync(count, parameter.size);
             
             if (keys == null)
