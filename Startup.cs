@@ -7,6 +7,7 @@ using AspNetCore.Authentication.ApiKey;
 using KeyGenerationService.Auth;
 using KeyGenerationService.Auth.RateLimiters;
 using KeyGenerationService.BackgroundTasks;
+using KeyGenerationService.BackgroundTasks.BackgroundTaskQueues;
 using KeyGenerationService.Data;
 using KeyGenerationService.KeyCachers;
 using KeyGenerationService.KeyDatabaseSeeders;
@@ -68,22 +69,28 @@ namespace KeyGenerationService
                 {
                     Configuration = Configuration.GetConnectionString("RedisConnection"),
                 };
+
+                const string cacheKey = "test";
+                var buildCacheKey = new Func<string, int, string>((key, size) => key + $"_size_${size}");
                 
-                return new KeyCacher(new RedisCache(redisCacheOptions),"test");
+                return new KeyCacher(new RedisCache(redisCacheOptions),cacheKey, buildCacheKey);
             });
 
             services.AddScoped<IKeyRetriever, KeyRetriever>();
             services.AddScoped<IKeyReturner, KeyReturner>();
             services.AddScoped<IKeyService, KeyService>();
 
+            services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
+            
             services.AddSingleton<RefillKeysInCacheTask>(o =>
             {
                 var serviceScopeFactory = o.GetService<IServiceScopeFactory>();
                 var databaseSeeder = o.GetRequiredService<IKeyDatabaseSeeder>();
                 var keyCacheService = o.GetRequiredService<IKeyCacher>();
                 var maxKeysInCache = 3;
+                var backgroundTaskQueue = o.GetRequiredService<IBackgroundTaskQueue>();
 
-                return new RefillKeysInCacheTask(serviceScopeFactory, databaseSeeder, keyCacheService, maxKeysInCache);
+                return new RefillKeysInCacheTask(serviceScopeFactory, databaseSeeder, keyCacheService, maxKeysInCache, backgroundTaskQueue);
             });
             services.AddHostedService<RefillKeysInCacheTask>(o => o.GetRequiredService<RefillKeysInCacheTask>());
 

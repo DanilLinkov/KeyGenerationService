@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using KeyGenerationService.Controllers.QueryParameters;
 using KeyGenerationService.Dtos;
 using KeyGenerationService.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -20,9 +21,14 @@ namespace KeyGenerationService.Controllers
         }
 
         [HttpGet("key")]
-        public async Task<IActionResult> Get()
+        public async Task<IActionResult> Get([FromQuery] GetKeyQueryParameter parameter)
         {
-            var key = await _keyService.GetAKeyAsync();
+            if (parameter.size <= 3 )
+            {
+                parameter.size = 8;
+            }
+
+            var key = await _keyService.GetAKeyAsync(parameter.size);
 
             if (key == null)
             {
@@ -33,9 +39,14 @@ namespace KeyGenerationService.Controllers
         }
         
         [HttpGet("keys/{count}")]
-        public async Task<IActionResult> Get(int count)
+        public async Task<IActionResult> Get(int count, [FromQuery] GetKeyQueryParameter parameter)
         {
-            var keys = await _keyService.GetKeysAsync(count);
+            if (parameter.size <= 3 )
+            {
+                parameter.size = 8;
+            }
+            
+            var keys = await _keyService.GetKeysAsync(count, parameter.size);
             
             if (keys == null)
             {

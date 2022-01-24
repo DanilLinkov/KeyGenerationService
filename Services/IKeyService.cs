@@ -8,8 +8,8 @@ namespace KeyGenerationService.Services
 {
     public interface IKeyService
     {
-        Task<GetKeyDto> GetAKeyAsync();
-        Task<List<GetKeyDto>> GetKeysAsync(int count);
+        Task<GetKeyDto> GetAKeyAsync(int size);
+        Task<List<GetKeyDto>> GetKeysAsync(int count, int size);
         Task ReturnKeysAsync(ReturnKeyDto keys);
     }
 }
