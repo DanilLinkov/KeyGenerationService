@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using AspNetCore.Authentication.ApiKey;
+using AutoMapper;
 using KeyGenerationService.Auth;
 using KeyGenerationService.Auth.RateLimiters;
 using KeyGenerationService.BackgroundTasks;
@@ -70,7 +71,7 @@ namespace KeyGenerationService
                     Configuration = Configuration.GetConnectionString("RedisConnection"),
                 };
 
-                const string cacheKey = "test";
+                string cacheKey = Configuration.GetSection("CacheKey").Value;
                 var buildCacheKey = new Func<string, int, string>((key, size) => key + $"_size_${size}");
                 
                 return new KeyCacher(new RedisCache(redisCacheOptions),cacheKey, buildCacheKey);
@@ -78,7 +79,21 @@ namespace KeyGenerationService
 
             services.AddScoped<IKeyRetriever, KeyRetriever>();
             services.AddScoped<IKeyReturner, KeyReturner>();
-            services.AddScoped<IKeyService, KeyService>();
+            services.AddScoped<IKeyService, KeyService>(o =>
+            {
+                var rateLimiter = o.GetRequiredService<IRateLimiter>();
+                var mapper = o.GetRequiredService<IMapper>();
+                var context = o.GetRequiredService<DataContext>();
+                var keyCacher = o.GetRequiredService<IKeyCacher>();
+                var keyReturner = o.GetRequiredService<IKeyReturner>();
+                var keyRetriever = o.GetRequiredService<IKeyRetriever>();
+                var databaseSeeder = o.GetRequiredService<IKeyDatabaseSeeder>();
+                var refillKeysInCacheTask = o.GetRequiredService<RefillKeysInCacheTask>();
+                var backgroundTaskQueue = o.GetRequiredService<IBackgroundTaskQueue>();
+                var keysToGenerateOnEmptyCache = Configuration.GetSection("KeysToGenerateOnEmptyCache").Get<int>();
+                
+                return new KeyService(rateLimiter, mapper,context, databaseSeeder, refillKeysInCacheTask, backgroundTaskQueue, keyCacher, keyRetriever, keyReturner, keysToGenerateOnEmptyCache);
+            });
 
             services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
             
@@ -87,10 +102,11 @@ namespace KeyGenerationService
                 var serviceScopeFactory = o.GetService<IServiceScopeFactory>();
                 var databaseSeeder = o.GetRequiredService<IKeyDatabaseSeeder>();
                 var keyCacheService = o.GetRequiredService<IKeyCacher>();
-                var maxKeysInCache = 3;
+                var maxKeysInCache = Configuration.GetValue<int>("MaxKeysInCache");
                 var backgroundTaskQueue = o.GetRequiredService<IBackgroundTaskQueue>();
+                var keysToGenerateOnEmptyCache = Configuration.GetValue<int>("KeysToGenerateOnEmptyCache");
 
-                return new RefillKeysInCacheTask(serviceScopeFactory, databaseSeeder, keyCacheService, maxKeysInCache, backgroundTaskQueue);
+                return new RefillKeysInCacheTask(serviceScopeFactory, databaseSeeder, keyCacheService, maxKeysInCache, backgroundTaskQueue, keysToGenerateOnEmptyCache);
             });
             services.AddHostedService<RefillKeysInCacheTask>(o => o.GetRequiredService<RefillKeysInCacheTask>());
 

@@ -22,14 +22,16 @@ namespace KeyGenerationService.BackgroundTasks
         private readonly IKeyCacher _keyCacher;
         private readonly int _maxKeysInCache;
         private readonly IBackgroundTaskQueue _backgroundTaskQueue;
+        private readonly int _keysToGenerateOnEmptyCache;
 
-        public RefillKeysInCacheTask(IServiceScopeFactory serviceScopeFactory, IKeyDatabaseSeeder databaseSeeder, IKeyCacher keyCacher, int maxKeysInCache, IBackgroundTaskQueue backgroundTaskQueue)
+        public RefillKeysInCacheTask(IServiceScopeFactory serviceScopeFactory, IKeyDatabaseSeeder databaseSeeder, IKeyCacher keyCacher, int maxKeysInCache, IBackgroundTaskQueue backgroundTaskQueue, int keysToGenerateOnEmptyCache)
         {
             _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
             _databaseSeeder = databaseSeeder ?? throw new ArgumentNullException(nameof(databaseSeeder));
             _keyCacher = keyCacher ?? throw new ArgumentNullException(nameof(keyCacher));
             _maxKeysInCache = maxKeysInCache;
             _backgroundTaskQueue = backgroundTaskQueue ?? throw new ArgumentNullException(nameof(backgroundTaskQueue));
+            _keysToGenerateOnEmptyCache = keysToGenerateOnEmptyCache;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -55,7 +57,7 @@ namespace KeyGenerationService.BackgroundTasks
 
                 if (keysToAdd.Count < _maxKeysInCache)
                 {
-                    await _databaseSeeder.GenerateAndSeedAsync(10, sizes.Current);
+                    await _databaseSeeder.GenerateAndSeedAsync(_keysToGenerateOnEmptyCache, sizes.Current);
                     keysToAdd.AddRange(await keyRetriever.RetrieveKeys(_maxKeysInCache - keysInCache.Count, currentSize));
                 }
 

@@ -31,8 +31,9 @@ namespace KeyGenerationService.Services
         private readonly IBackgroundTaskQueue _backgroundTaskQueue;
         private readonly IKeyRetriever _keyRetriever;
         private readonly IKeyReturner _keyReturner;
+        private readonly int _keysToGenerateOnEmptyCache;
 
-        public KeyService(IRateLimiter rateLimiter, IMapper mapper,DataContext context, IKeyDatabaseSeeder databaseSeeder, RefillKeysInCacheTask refillKeysInCacheTask, IBackgroundTaskQueue backgroundTaskQueue, IKeyCacher keyCacher, IKeyRetriever keyRetriever, IKeyReturner keyReturner)
+        public KeyService(IRateLimiter rateLimiter, IMapper mapper,DataContext context, IKeyDatabaseSeeder databaseSeeder, RefillKeysInCacheTask refillKeysInCacheTask, IBackgroundTaskQueue backgroundTaskQueue, IKeyCacher keyCacher, IKeyRetriever keyRetriever, IKeyReturner keyReturner, int keysToGenerateOnEmptyCache)
         {
             _rateLimiter = rateLimiter ?? throw new ArgumentNullException(nameof(rateLimiter));
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
@@ -43,6 +44,7 @@ namespace KeyGenerationService.Services
             _keyCacher = keyCacher ?? throw new ArgumentNullException(nameof(keyCacher));
             _keyRetriever = keyRetriever ?? throw new ArgumentNullException(nameof(keyRetriever));
             _keyReturner = keyReturner ?? throw new ArgumentNullException(nameof(keyReturner));
+            _keysToGenerateOnEmptyCache = keysToGenerateOnEmptyCache;
         }
         
         public async Task<GetKeyDto> GetAKeyAsync(int size)
@@ -67,7 +69,7 @@ namespace KeyGenerationService.Services
 
             if (keysFromDatabase.Count <= 0)
             {
-                await _databaseSeeder.GenerateAndSeedAsync(5, size);
+                await _databaseSeeder.GenerateAndSeedAsync(_keysToGenerateOnEmptyCache, size);
                 keysFromDatabase = await _keyRetriever.RetrieveKeys(1, size);
             }
             
@@ -99,7 +101,7 @@ namespace KeyGenerationService.Services
             
                 if (keys.Count != keysLeftToGet)
                 {
-                    await _databaseSeeder.GenerateAndSeedAsync(6, size);
+                    await _databaseSeeder.GenerateAndSeedAsync(_keysToGenerateOnEmptyCache, size);
                     keys.AddRange(await _keyRetriever.RetrieveKeys(keysLeftToGet - keys.Count, size));
                 }
             
