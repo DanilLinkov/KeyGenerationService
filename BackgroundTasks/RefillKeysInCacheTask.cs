@@ -46,22 +46,22 @@ namespace KeyGenerationService.BackgroundTasks
                 
                 var keyRetriever = scope.ServiceProvider.GetRequiredService<IKeyRetriever>();
             
-                var keysInCache = await _keyCacher.GetKeys(_maxKeysInCache, currentSize);
+                var keysInCache = await _keyCacher.GetKeysAsync(_maxKeysInCache, currentSize);
 
                 if (keysInCache.Count == _maxKeysInCache)
                 {
                     return;
                 }
 
-                var keysToAdd = await keyRetriever.RetrieveKeys(_maxKeysInCache - keysInCache.Count, currentSize);
+                var keysToAdd = await keyRetriever.RetrieveKeysAsync(_maxKeysInCache - keysInCache.Count, currentSize);
 
                 if (keysToAdd.Count < _maxKeysInCache)
                 {
                     await _databaseSeeder.GenerateAndSeedAsync(_keysToGenerateOnEmptyCache, sizes.Current);
-                    keysToAdd.AddRange(await keyRetriever.RetrieveKeys(_maxKeysInCache - keysInCache.Count, currentSize));
+                    keysToAdd.AddRange(await keyRetriever.RetrieveKeysAsync(_maxKeysInCache - keysInCache.Count, currentSize));
                 }
 
-                await _keyCacher.AddKeys(keysToAdd, sizes.Current);
+                await _keyCacher.AddKeysAsync(keysToAdd, sizes.Current);
             }
         }
     }

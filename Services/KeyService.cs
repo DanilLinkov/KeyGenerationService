@@ -56,7 +56,7 @@ namespace KeyGenerationService.Services
                 return null;
             }
 
-            var keysFromCache = await _keyCacher.GetKeys(1, size);
+            var keysFromCache = await _keyCacher.GetKeysAsync(1, size);
             
             if (keysFromCache.Count > 0)
             {
@@ -65,12 +65,12 @@ namespace KeyGenerationService.Services
                 return getCacheKeyDto;
             }
 
-            var keysFromDatabase = await _keyRetriever.RetrieveKeys(1, size);
+            var keysFromDatabase = await _keyRetriever.RetrieveKeysAsync(1, size);
 
             if (keysFromDatabase.Count <= 0)
             {
                 await _databaseSeeder.GenerateAndSeedAsync(_keysToGenerateOnEmptyCache, size);
-                keysFromDatabase = await _keyRetriever.RetrieveKeys(1, size);
+                keysFromDatabase = await _keyRetriever.RetrieveKeysAsync(1, size);
             }
             
             var key = keysFromDatabase.First();
@@ -91,18 +91,18 @@ namespace KeyGenerationService.Services
 
             if (count == 0) return null;
             
-            var keysFromCache = await _keyCacher.GetKeys(count, size);
+            var keysFromCache = await _keyCacher.GetKeysAsync(count, size);
 
             if (keysFromCache.Count < count)
             {
                 var keysLeftToGet = count - keysFromCache.Count;
             
-                var keys = await _keyRetriever.RetrieveKeys(keysLeftToGet, size);
+                var keys = await _keyRetriever.RetrieveKeysAsync(keysLeftToGet, size);
             
                 if (keys.Count != keysLeftToGet)
                 {
                     await _databaseSeeder.GenerateAndSeedAsync(_keysToGenerateOnEmptyCache, size);
-                    keys.AddRange(await _keyRetriever.RetrieveKeys(keysLeftToGet - keys.Count, size));
+                    keys.AddRange(await _keyRetriever.RetrieveKeysAsync(keysLeftToGet - keys.Count, size));
                 }
             
                 keysFromCache.AddRange(keys);
@@ -118,7 +118,7 @@ namespace KeyGenerationService.Services
 
         public async Task ReturnKeysAsync(ReturnKeyDto returnKeyDto)
         {
-            await _keyReturner.ReturnKeys(returnKeyDto.Keys);
+            await _keyReturner.ReturnKeysAsync(returnKeyDto.Keys);
         }
     }
 }

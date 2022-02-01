@@ -18,7 +18,7 @@ namespace KeyGenerationService.KeyRetrievers
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
         
-        public async Task<List<TakenKey>> RetrieveKeys(int numberOfKeys, int size)
+        public async Task<List<TakenKey>> RetrieveKeysAsync(int numberOfKeys, int size)
         {
             var keys = await _context.AvailableKeys.Where(k => k.Size == size).Take(numberOfKeys).ToListAsync();
             

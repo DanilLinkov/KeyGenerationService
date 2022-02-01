@@ -6,6 +6,6 @@ namespace KeyGenerationService.KeyReturners
 {
     public interface IKeyReturner
     {
-        Task ReturnKeys(List<string> keysToReturn);
+        Task ReturnKeysAsync(List<string> keysToReturn);
     }
 }

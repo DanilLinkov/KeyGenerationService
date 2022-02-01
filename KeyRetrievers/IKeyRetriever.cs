@@ -6,6 +6,6 @@ namespace KeyGenerationService.KeyRetrievers
 {
     public interface IKeyRetriever
     {
-        public Task<List<TakenKey>> RetrieveKeys(int numberOfKeys, int size);
+        public Task<List<TakenKey>> RetrieveKeysAsync(int numberOfKeys, int size);
     }
 }

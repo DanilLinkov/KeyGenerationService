@@ -17,7 +17,7 @@ namespace KeyGenerationService.KeyReturners
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
-        public async Task ReturnKeys(List<string> keysToReturn)
+        public async Task ReturnKeysAsync(List<string> keysToReturn)
         {
             var takenKeysToReturn = await _context.TakenKeys.Where(key => keysToReturn.Contains(key.Key)).ToListAsync();
             

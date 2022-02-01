@@ -23,7 +23,7 @@ namespace KeyGenerationService.KeyCachers
             _buildCacheKey = buildCacheKey ?? throw new ArgumentNullException(nameof(buildCacheKey));
         }
         
-        public async Task<List<TakenKey>> GetKeys(int count, int size)
+        public async Task<List<TakenKey>> GetKeysAsync(int count, int size)
         {
             var fullCacheKey = _buildCacheKey(_cacheKey, size);
             
@@ -45,12 +45,12 @@ namespace KeyGenerationService.KeyCachers
             var keysToReturn = keys.GetRange(0, count);
                     
             keys.RemoveRange(0, count);
-            await SetKeys(keys, size);
+            await SetKeysAsync(keys, size);
 
             return keysToReturn;
         }
 
-        public async Task AddKeys(List<TakenKey> keys, int size)
+        public async Task AddKeysAsync(List<TakenKey> keys, int size)
         {
             var fullCacheKey = _buildCacheKey(_cacheKey, size);
             
@@ -60,18 +60,18 @@ namespace KeyGenerationService.KeyCachers
 
             if (value == null)
             {
-                await SetKeys(keys, size);
+                await SetKeysAsync(keys, size);
             }
             else
             {
                 var existingKeys = JsonConvert.DeserializeObject<List<TakenKey>>(value);
                 existingKeys.AddRange(keys);
             
-                await SetKeys(existingKeys, size);
+                await SetKeysAsync(existingKeys, size);
             }
         }
 
-        public async Task SetKeys(List<TakenKey> keys, int size)
+        public async Task SetKeysAsync(List<TakenKey> keys, int size)
         {
             var fullCacheKey = _buildCacheKey(_cacheKey, size);
             
