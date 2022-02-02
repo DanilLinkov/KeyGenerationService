@@ -75,11 +75,11 @@ The number of keys created with a given API key is reset to 0 daily using an azu
    ```json
    [
        {
-           "id": int,
-           "key": string of given size or 8 by default,
-           "size": int size of key,
-           "creationDate": Date time of key creation,
-           "takenDate": Date time of key being taken
+           "id": "int",
+           "key": "string of given size or 8 by default",
+           "size": "int size of key",
+           "creationDate": "Date time of key creation",
+           "takenDate": "Date time of key being taken"
    	}
    ]
    ```
@@ -90,7 +90,7 @@ The number of keys created with a given API key is reset to 0 daily using an azu
 
    ```json
    {
-       "keys"; ["string"]
+       "keys": ["string"]
    }
    ```
 
