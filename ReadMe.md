@@ -14,7 +14,9 @@
 
 ## Description
 
-Key generation service is a .net core web API that returns globally unique keys between 8 and 16 characters in length. These keys are then marked as taken and will not be given out to any other request. The keys can also be returned back to being available if they are no longer used. This API is currently hosted on azure with this URL https://keygenerationservice.azurewebsites.net/. Please read the Usage section for getting started.
+Key generation service is a .net core web API that returns globally unique keys between 8 and 16 characters in length. These keys are then marked as taken and will not be given out to any other request. The keys can also be returned back to being available if they are no longer used. This API is currently hosted on azure with this URL https://keygenerationservice.azurewebsites.net/. Please read the [Usage](#usage-&-api-key) section for getting started.
+
+This service was used in another personal project which is a URL shortner which can be found here: https://github.com/DanilLinkov/UrlShortnerClient and is hosted on https://shorturlclient.azurewebsites.net/app.
 
 ## Quick feature summary
 
@@ -25,7 +27,7 @@ Key generation service is a .net core web API that returns globally unique keys 
 
 ## Purpose
 
-The main purpose of this microservice is to allow for different instances of the same (or different if applicable) API hosted in the cloud to request and receive globally unique keys and not have to worry about duplicate keys being created between instances. This allows for easier scalability of microservices that require unique keys to be used. Some real world applications are Youtube video ids, twitter tweet ids etc. This service was used in another personal project which is a URL shortner which can be found here.
+The main purpose of this microservice is to allow for different instances of the same (or different if applicable) API hosted in the cloud to request and receive globally unique keys and not have to worry about duplicate keys being created between instances. This allows for easier scalability of microservices that require unique keys to be used. Some real world applications are Youtube video ids, twitter tweet ids etc.
 
 ## Tech stack
 
@@ -54,7 +56,7 @@ The number of keys created with a given API key is reset to 0 daily using an azu
 
 1) `GET /api/key` or `GET /api/key?size={number between 8-16}`
 
-   Returned JSON:
+   Response JSON:
 
    ```json
    {
@@ -70,7 +72,7 @@ The number of keys created with a given API key is reset to 0 daily using an azu
 
 2) `GET /api/keys/{count}` `GET /api/keys/{count}?size={number between 8-16}`
 
-   Returned JSON:
+   Response JSON:
 
    ```json
    [
@@ -88,12 +90,14 @@ The number of keys created with a given API key is reset to 0 daily using an azu
 
 3) `POST /api/ReturnKeys`
 
+   Request JSON:
+   
    ```json
    {
        "keys": ["string"]
    }
    ```
-
+   
    
 
 ## SQL database tables
