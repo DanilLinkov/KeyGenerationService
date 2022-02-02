@@ -12,13 +12,13 @@
 8. [Key generation and seeding](#key-generation-and-seeding)
 9. [Caching](#caching)
 
-## Description
-
-Key generation service is a .net core web API that returns globally unique keys between 8 and 16 characters in length. These keys are then marked as taken and will not be given out to any other request. The keys can also be returned back to being available if they are no longer used. 
-
 ### Note: This API is currently hosted on azure with this URL https://keygenerationservice.azurewebsites.net/. Please read the [Usage](#usage-&-api-key) section for getting started.
 
 ### Note: This service was used in another personal project which is a URL shortner which can be found here: https://github.com/DanilLinkov/UrlShortnerClient and is hosted on https://shorturlclient.azurewebsites.net/app.
+
+## Description
+
+Key generation service is a .net core web API that returns globally unique keys between 8 and 16 characters in length. These keys are then marked as taken and will not be given out to any other request. The keys can also be returned back to being available if they are no longer used. 
 
 ## Quick feature summary
 
